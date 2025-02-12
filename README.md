@@ -19,7 +19,7 @@ sculptor [input json] [CSS output]
 
 ex.
 ```
-sculptor theme.json
+sculptor theme.json style.css
 ```
 
 Use this directly, or `@import` into another CSS file.
