@@ -14,7 +14,7 @@ Sculptor is a program for generating utility CSS files. Look at the `theme.json`
 ## Usage
 
 ```
-sculptor [input json] [CSS output]
+sculptor [JSON input] [CSS output]
 ```
 
 ex.
