@@ -57,8 +57,8 @@ func main() {
 
 	file.Close()
 
-	css := &CssFile{Vars: make(map[string]string)}
-	buildCss(config, css)
+	css := CssFile{Vars: make(map[string]string)}
+	css.buildCss(config)
 
 	//generate css file
 	output, err := os.Create(outputName)
@@ -72,7 +72,7 @@ func main() {
 	}
 }
 
-func buildCss(c Config, css *CssFile) {
+func (css *CssFile) buildCss(c Config) {
 	padding := Directions{
 		Base:   Class{Name: "p", Val: "padding"},
 		Top:    Class{Name: "pt", Val: "padding-top"},
@@ -97,14 +97,14 @@ func buildCss(c Config, css *CssFile) {
 		Right:  Class{Name: "border-right", Val: "border-right-width"},
 	}
 
-	buildVars(c.Theme, css)
-	buildTheme(c.Theme, css)
-	buildDirections(c.Margin, margin, css)
-	buildDirections(c.Padding, padding, css)
-	buildDirections(c.Border, border, css)
+	css.buildVars(c.Theme)
+	css.buildTheme(c.Theme)
+	css.buildDirections(c.Margin, margin)
+	css.buildDirections(c.Padding, padding)
+	css.buildDirections(c.Border, border)
 }
 
-func buildVars(e Entries, css *CssFile) {
+func (css *CssFile) buildVars(e Entries) {
 	css.AddLine(":root {\n")
 	for _, row := range e {
 		for key, value := range row {
@@ -115,7 +115,7 @@ func buildVars(e Entries, css *CssFile) {
 	css.AddLine("}\n\n")
 }
 
-func buildTheme(e Entries, css *CssFile) {
+func (css *CssFile) buildTheme(e Entries) {
 	//background colors
 	for _, row := range e {
 		for key := range row {
@@ -142,7 +142,7 @@ func buildTheme(e Entries, css *CssFile) {
 	}
 }
 
-func buildDirections(e Entries, d Directions, css *CssFile) {
+func (css *CssFile) buildDirections(e Entries, d Directions) {
 	//base
 	for _, row := range e {
 		for key, value := range row {
