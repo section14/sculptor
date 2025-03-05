@@ -33,6 +33,7 @@ func (c *CssFile) AddLine(line string) {
 
 type Config struct {
 	Theme   Entries `json:"theme"`
+	Spacing Entries `json:"spacing"`
 	Margin  Entries `json:"padding"`
 	Padding Entries `json:"margin"`
 	Border  Entries `json:"border"`
@@ -40,7 +41,7 @@ type Config struct {
 
 func main() {
 	configName := os.Args[1]
-    outputName := os.Args[2]
+	outputName := os.Args[2]
 
 	file, err := os.Open(configName)
 	if err != nil {
@@ -97,19 +98,30 @@ func (css *CssFile) buildCss(c Config) {
 		Right:  Class{Name: "border-right", Val: "border-right-width"},
 	}
 
-	css.buildVars(c.Theme)
+	css.buildVars(c.Theme, c.Spacing)
 	css.buildTheme(c.Theme)
 	css.buildDirections(c.Margin, margin)
 	css.buildDirections(c.Padding, padding)
 	css.buildDirections(c.Border, border)
 }
 
-func (css *CssFile) buildVars(e Entries) {
+func (css *CssFile) buildVars(color Entries, spacing Entries) {
 	css.AddLine(":root {\n")
-	for _, row := range e {
+    //colors
+	for _, row := range color {
 		for key, value := range row {
 			css.Vars[key] = fmt.Sprintf("var(--%s)", key)
 			css.AddLine(fmt.Sprintf("    --%s: %s;\n", key, value))
+		}
+	}
+
+    css.AddLine("\n")
+
+    //spacing
+	for _, row := range spacing {
+		for key, value := range row {
+			css.Vars[key] = fmt.Sprintf("var(--spacing-%s)", key)
+			css.AddLine(fmt.Sprintf("    --spacing-%s: %s;\n", key, value))
 		}
 	}
 	css.AddLine("}\n\n")
