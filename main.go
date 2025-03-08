@@ -32,11 +32,12 @@ func (c *CssFile) AddLine(line string) {
 }
 
 type Config struct {
-	Theme   Entries `json:"theme"`
-	Spacing Entries `json:"spacing"`
-	Margin  Entries `json:"padding"`
-	Padding Entries `json:"margin"`
-	Border  Entries `json:"border"`
+	Theme   Entries  `json:"theme"`
+	Shades  []string `json:"shades"`
+	Spacing Entries  `json:"spacing"`
+	Margin  Entries  `json:"padding"`
+	Padding Entries  `json:"margin"`
+	Border  Entries  `json:"border"`
 }
 
 func main() {
@@ -98,26 +99,65 @@ func (css *CssFile) buildCss(c Config) {
 		Right:  Class{Name: "border-right", Val: "border-right-width"},
 	}
 
-	css.buildVars(c.Theme, c.Spacing)
+	css.buildVars(c.Theme, c.Shades, c.Spacing)
 	css.buildTheme(c.Theme)
 	css.buildDirections(c.Margin, margin)
 	css.buildDirections(c.Padding, padding)
 	css.buildDirections(c.Border, border)
 }
 
-func (css *CssFile) buildVars(color Entries, spacing Entries) {
+func shadeBuilder(color, shade string) string {
+	switch shade {
+	case "100":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 10) calc(l + 40));", color)
+	case "200":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 8) calc(l + 30));", color)
+	case "300":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 5) calc(l + 15));", color)
+	case "400":
+		return fmt.Sprintf("hsl(from var(--%s) h s calc(l + 7));", color)
+	case "500":
+		return fmt.Sprintf("var(--%s)", color)
+	case "600":
+		return fmt.Sprintf("hsl(from var(--%s) h s calc(l - 10));", color)
+	case "700":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 5) calc(l - 15));", color)
+	case "800":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 5) calc(l - 30));", color)
+	case "900":
+		return fmt.Sprintf("hsl(from var(--%s) h calc(s + 5) calc(l - 40));", color)
+	default:
+		return fmt.Sprintf("var(--%s)", color)
+	}
+}
+
+func (css *CssFile) buildVars(color Entries, shades []string, spacing Entries) {
+	var colorNames []string
+
 	css.AddLine(":root {\n")
-    //colors
+	//colors
 	for _, row := range color {
 		for key, value := range row {
+			colorNames = append(colorNames, key)
 			css.Vars[key] = fmt.Sprintf("var(--%s)", key)
 			css.AddLine(fmt.Sprintf("    --%s: %s;\n", key, value))
 		}
 	}
 
-    css.AddLine("\n")
+	css.AddLine("\n")
 
-    //spacing
+	//shades
+	for _, c := range colorNames {
+		for _, s := range shades {
+			shadeName := fmt.Sprintf("--%s-%s", c, s)
+			newHsl := shadeBuilder(c, s)
+			newShade := fmt.Sprintf("    %s: %s\n", shadeName, newHsl)
+			css.AddLine(newShade)
+		}
+		css.AddLine("\n")
+	}
+
+	//spacing
 	for _, row := range spacing {
 		for key, value := range row {
 			css.Vars[key] = fmt.Sprintf("var(--spacing-%s)", key)
@@ -134,7 +174,6 @@ func (css *CssFile) buildTheme(e Entries) {
 			line := fmt.Sprintf(".bg-%s {\n    background-color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 		}
-
 	}
 
 	//text colors
