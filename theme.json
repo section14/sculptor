@@ -1,10 +1,22 @@
 {
     "theme": [
         {"primary": "#FF0000"},
-        {"secondary": "#00FF00"},
+        {"secondary": "#282FFF"},
+        {"info": "#00D1D8"},
         {"light": "#FFFFFF"},
         {"med": "#CCCCCC"},
         {"dark": "#2E2E2E"}
+    ],
+    "shades": [
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900"
     ],
     "spacing": [
         {"1": "0.25rem"},
