@@ -14,12 +14,12 @@ Sculptor is a program for generating utility CSS files. Look at the `theme.json`
 ## Usage
 
 ```
-sculptor [JSON input] [CSS output]
+sculptor -config [JSON config] -output [CSS output]
 ```
 
 ex.
 ```
-sculptor theme.json style.css
+sculptor -config theme.json -output style.css
 ```
 
 Use this directly, or `@import` into another CSS file.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+    "flag"
 	"fmt"
 	"log"
 	"os"
@@ -42,13 +43,22 @@ type Config struct {
 }
 
 func main() {
-	configName := os.Args[1]
-	outputName := os.Args[2]
+    //file flags
+    configFlag := flag.String("config", "", "name of JSON config file")
+    outputFlag := flag.String("output", "", "name of CSS output file")
+
+    //optional flag to print banner
+    banner := flag.Bool("banner", false, "Print banner at the top of CSS file")
+    flag.Parse()
+
+    configName := *configFlag
+    outputName := *outputFlag
 
 	file, err := os.Open(configName)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("couldn't open %s", configName), err)
 	}
+	defer file.Close()
 
 	var config Config
 	decoder := json.NewDecoder(file)
@@ -58,10 +68,8 @@ func main() {
 		log.Fatal("couldn't decode config, check JSON format")
 	}
 
-	file.Close()
-
 	css := CssFile{Vars: make(map[string]string), Shades: make([]string, 0)}
-	css.buildCss(config)
+	css.buildCss(config, *banner)
 
 	//generate css file
 	output, err := os.Create(outputName)
@@ -70,14 +78,16 @@ func main() {
 	}
 	defer output.Close()
 
-	fmt.Println("Vars: ", css.Vars)
-
 	for _, c := range css.Lines {
 		output.WriteString(c)
 	}
 }
 
-func (css *CssFile) buildCss(c Config) {
+func (css *CssFile) buildCss(c Config, printBanner bool) {
+    if printBanner {
+        css.AddLine("/* Generated with Sculptor: https://github.com/section14/sculptor */\n\n")
+    }
+
 	padding := Directions{
 		Base:   Class{Name: "p", Val: "padding"},
 		Top:    Class{Name: "pt", Val: "padding-top"},
