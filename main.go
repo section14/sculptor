@@ -90,18 +90,18 @@ func (css *CssFile) buildCss(c Config, printBanner bool) {
 
 	padding := Directions{
 		Base:   Class{Name: "p", Val: "padding"},
-		Top:    Class{Name: "pt", Val: "padding-top"},
+		Top:    Class{Name: "ps", Val: "padding-top"},
 		Bottom: Class{Name: "pb", Val: "padding-bottom"},
 		Left:   Class{Name: "pl", Val: "padding-left"},
-		Right:  Class{Name: "pr", Val: "padding-right"},
+		Right:  Class{Name: "pe", Val: "padding-right"},
 	}
 
 	margin := Directions{
 		Base:   Class{Name: "m", Val: "margin"},
 		Top:    Class{Name: "mt", Val: "margin-top"},
 		Bottom: Class{Name: "mb", Val: "margin-bottom"},
-		Left:   Class{Name: "ml", Val: "margin-left"},
-		Right:  Class{Name: "mr", Val: "margin-right"},
+		Left:   Class{Name: "ms", Val: "margin-left"},
+		Right:  Class{Name: "me", Val: "margin-right"},
 	}
 
 	border := Directions{

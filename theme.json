@@ -1,10 +1,10 @@
 {
     "theme": [
-        {"primary": "#FF0000"},
-        {"secondary": "#282FFF"},
+        {"primary": "#63A361"},
+        {"secondary": "#FFC50F"},
         {"info": "#00D1D8"},
-        {"light": "#FFFFFF"},
-        {"med": "#CCCCCC"},
+        {"light": "#FDE7B3"},
+        {"med": "#5B532C"},
         {"dark": "#2E2E2E"}
     ],
     "shades": [
