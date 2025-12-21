@@ -2,13 +2,18 @@ package main
 
 import (
 	"encoding/json"
-    "flag"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 )
 
 type Entries []map[string]string
+
+type ThemeEntry struct {
+	Color          map[string]string `json:"color"`
+	GenerateShades bool              `json:"generateShades"`
+}
 
 type Class struct {
 	Name string
@@ -34,25 +39,25 @@ func (c *CssFile) AddLine(line string) {
 }
 
 type Config struct {
-	Theme   Entries  `json:"theme"`
-	Shades  []string `json:"shades"`
-	Spacing Entries  `json:"spacing"`
-	Margin  Entries  `json:"padding"`
-	Padding Entries  `json:"margin"`
-	Border  Entries  `json:"border"`
+	Theme   []ThemeEntry `json:"theme"`
+	Shades  []string     `json:"shades"`
+	Spacing Entries      `json:"spacing"`
+	Margin  Entries      `json:"padding"`
+	Padding Entries      `json:"margin"`
+	Border  Entries      `json:"border"`
 }
 
 func main() {
-    //file flags
-    configFlag := flag.String("config", "", "name of JSON config file")
-    outputFlag := flag.String("output", "", "name of CSS output file")
+	//file flags
+	configFlag := flag.String("config", "", "name of JSON config file")
+	outputFlag := flag.String("output", "", "name of CSS output file")
 
-    //optional flag to print banner
-    banner := flag.Bool("banner", false, "Print banner at the top of CSS file")
-    flag.Parse()
+	//optional flag to print banner
+	banner := flag.Bool("banner", false, "Print banner at the top of CSS file")
+	flag.Parse()
 
-    configName := *configFlag
-    outputName := *outputFlag
+	configName := *configFlag
+	outputName := *outputFlag
 
 	file, err := os.Open(configName)
 	if err != nil {
@@ -84,9 +89,9 @@ func main() {
 }
 
 func (css *CssFile) buildCss(c Config, printBanner bool) {
-    if printBanner {
-        css.AddLine("/* Generated with Sculptor: https://github.com/section14/sculptor */\n\n")
-    }
+	if printBanner {
+		css.AddLine("/* Generated with Sculptor: https://github.com/section14/sculptor */\n\n")
+	}
 
 	padding := Directions{
 		Base:   Class{Name: "p", Val: "padding"},
@@ -146,14 +151,17 @@ func shadeBuilder(color, shade string) string {
 	}
 }
 
-func (css *CssFile) buildVars(color Entries, shades []string, spacing Entries) {
-	var colorNames []string
+func (css *CssFile) buildVars(th []ThemeEntry, shades []string, spacing Entries) {
+	var shadeNames []string
 
 	css.AddLine(":root {\n")
-	//colors
-	for _, row := range color {
-		for key, value := range row {
-			colorNames = append(colorNames, key)
+
+	//add root variables + shades to build later
+	for _, entry := range th {
+		for key, value := range entry.Color {
+			if entry.GenerateShades {
+				shadeNames = append(shadeNames, key)
+			}
 			css.Vars[key] = fmt.Sprintf("var(--%s)", key)
 			css.AddLine(fmt.Sprintf("    --%s: %s;\n", key, value))
 		}
@@ -161,13 +169,13 @@ func (css *CssFile) buildVars(color Entries, shades []string, spacing Entries) {
 
 	css.AddLine("\n")
 
-	//shades
-	for _, c := range colorNames {
+	//build shade variables
+	for _, c := range shadeNames {
 		for _, s := range shades {
 			shadeName := fmt.Sprintf("--%s-%s", c, s)
 			newHsl := shadeBuilder(c, s)
 			newShade := fmt.Sprintf("    %s: %s\n", shadeName, newHsl)
-            css.Shades = append(css.Shades, shadeName)
+			css.Shades = append(css.Shades, shadeName)
 			css.AddLine(newShade)
 		}
 		css.AddLine("\n")
@@ -183,46 +191,50 @@ func (css *CssFile) buildVars(color Entries, shades []string, spacing Entries) {
 	css.AddLine("}\n\n")
 }
 
-func (css *CssFile) buildTheme(e Entries, shades []string) {
+func (css *CssFile) buildTheme(th []ThemeEntry, shades []string) {
 	//background colors
-    var bgOffset = 0
-	for _, row := range e {
-		for key := range row {
+	var bgOffset = 0
+	for _, entry := range th {
+		for key := range entry.Color {
 			line := fmt.Sprintf(".bg-%s {\n    background-color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 
 			//add color shade classes
-			for i, s := range shades {
-				line := fmt.Sprintf(".bg-%s-%s {\n    background-color: var(%s);\n}\n\n", 
-                    key, s, css.Shades[i + (bgOffset * len(shades))])
-				css.AddLine(line)
+			if entry.GenerateShades {
+				for i, s := range shades {
+					line := fmt.Sprintf(".bg-%s-%s {\n    background-color: var(%s);\n}\n\n",
+						key, s, css.Shades[i+(bgOffset*len(shades))])
+					css.AddLine(line)
+				}
+				bgOffset++
 			}
 
-            bgOffset++
 		}
 	}
 
 	//text colors
-    var textOffset = 0
-	for _, row := range e {
-		for key := range row {
+	var textOffset = 0
+	for _, entry := range th {
+		for key := range entry.Color {
 			line := fmt.Sprintf(".text-%s {\n    color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 
 			//add color shade classes
-			for i, s := range shades {
-				line := fmt.Sprintf(".text-%s-%s {\n    color: var(%s);\n}\n\n", 
-                    key, s, css.Shades[i + (textOffset * len(shades))])
-				css.AddLine(line)
+			if entry.GenerateShades {
+				for i, s := range shades {
+					line := fmt.Sprintf(".text-%s-%s {\n    color: var(%s);\n}\n\n",
+						key, s, css.Shades[i+(textOffset*len(shades))])
+					css.AddLine(line)
+				}
+				textOffset++
 			}
 
-            textOffset++
 		}
 	}
 
 	//border colors
-	for _, row := range e {
-		for key := range row {
+	for _, entry := range th {
+		for key := range entry.Color {
 			line := fmt.Sprintf(".border-%s {\n    border-color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 		}
