@@ -1,18 +1,26 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Entries []map[string]string
 
+type OkLch struct {
+	L string `yaml:"l"`
+	C string `yaml:"c"`
+	H string `yaml:"h"`
+}
+
 type ThemeEntry struct {
-	Color          map[string]string `json:"color"`
-	GenerateShades bool              `json:"generateShades"`
+	Color          map[string]string `yaml:"color"`
+	GenerateShades bool              `yaml:"generateShades"`
+	UserShades     map[string]OkLch  `yaml:"userShades"`
 }
 
 type Class struct {
@@ -29,9 +37,10 @@ type Directions struct {
 }
 
 type CssFile struct {
-	Vars   map[string]string
-	Shades []string
-	Lines  []string
+	Vars       map[string]string
+	Shades     []string
+	UserShades []string
+	Lines      []string
 }
 
 func (c *CssFile) AddLine(line string) {
@@ -39,17 +48,17 @@ func (c *CssFile) AddLine(line string) {
 }
 
 type Config struct {
-	Theme   []ThemeEntry `json:"theme"`
-	Shades  []string     `json:"shades"`
-	Spacing Entries      `json:"spacing"`
-	Margin  Entries      `json:"padding"`
-	Padding Entries      `json:"margin"`
-	Border  Entries      `json:"border"`
+	Theme   []ThemeEntry `yaml:"theme"`
+	Shades  []string     `yaml:"shades"`
+	Spacing Entries      `yaml:"spacing"`
+	Margin  Entries      `yaml:"padding"`
+	Padding Entries      `yaml:"margin"`
+	Border  Entries      `yaml:"border"`
 }
 
 func main() {
 	//file flags
-	configFlag := flag.String("config", "", "name of JSON config file")
+	configFlag := flag.String("config", "", "name of YAML config file")
 	outputFlag := flag.String("output", "", "name of CSS output file")
 
 	//optional flag to print banner
@@ -66,12 +75,8 @@ func main() {
 	defer file.Close()
 
 	var config Config
-	decoder := json.NewDecoder(file)
-
+	decoder := yaml.NewDecoder(file)
 	err = decoder.Decode(&config)
-	if err != nil {
-		log.Fatal("couldn't decode config, check JSON format")
-	}
 
 	css := CssFile{Vars: make(map[string]string), Shades: make([]string, 0)}
 	css.buildCss(config, *banner)
@@ -124,8 +129,7 @@ func (css *CssFile) buildCss(c Config, printBanner bool) {
 	css.buildDirections(c.Border, border)
 }
 
-//oklch(from var(--color-base-100) calc(l + 0.08) c h)
-
+// predetermined shade generation
 func shadeBuilder(color, shade string) string {
 	switch shade {
 	case "100":
@@ -151,15 +155,57 @@ func shadeBuilder(color, shade string) string {
 	}
 }
 
+// user based shade generation
+func buildShadeOffset(key string, ok OkLch) string {
+	l := "l"
+	c := "c"
+	h := "h"
+
+	if ok.L != "" {
+		l = fmt.Sprintf("calc(l %s)", ok.L)
+	}
+
+	if ok.C != "" {
+		c = fmt.Sprintf("calc(c %s)", ok.C)
+	}
+
+	if ok.H != "" {
+		h = fmt.Sprintf("calc(h %s)", ok.H)
+	}
+
+	return fmt.Sprintf("oklch(from var(--%s) %s %s %s);", key, l, c, h)
+}
+
+func buildUserShade(color string, shades map[string]OkLch) ([]string, []string) {
+	userShades := make([]string, 0)
+	shadeNames := make([]string, 0)
+
+	for k, v := range shades {
+		c := buildShadeOffset(color, v)
+		shade := fmt.Sprintf("    --%s-%s: %s\n", color, k, c)
+		shadeNames = append(shadeNames, fmt.Sprintf("%s-%s", color, k))
+		userShades = append(userShades, shade)
+	}
+
+	return shadeNames, userShades
+}
+
 func (css *CssFile) buildVars(th []ThemeEntry, shades []string, spacing Entries) {
 	var shadeNames []string
+	var userShades []string
 
 	css.AddLine(":root {\n")
 
 	//add root variables + shades to build later
 	for _, entry := range th {
 		for key, value := range entry.Color {
-			if entry.GenerateShades {
+			if len(entry.UserShades) > 0 {
+				names, shades := buildUserShade(key, entry.UserShades)
+				userShades = shades
+				css.UserShades = append(css.UserShades, names...)
+			}
+
+			if entry.GenerateShades && len(entry.UserShades) == 0 {
 				shadeNames = append(shadeNames, key)
 			}
 			css.Vars[key] = fmt.Sprintf("var(--%s)", key)
@@ -169,7 +215,14 @@ func (css *CssFile) buildVars(th []ThemeEntry, shades []string, spacing Entries)
 
 	css.AddLine("\n")
 
-	//build shade variables
+	// build user provided shades
+	for _, s := range userShades {
+		css.AddLine(s)
+	}
+
+	css.AddLine("\n")
+
+	// build shade variables
 	for _, c := range shadeNames {
 		for _, s := range shades {
 			shadeName := fmt.Sprintf("--%s-%s", c, s)
@@ -181,7 +234,7 @@ func (css *CssFile) buildVars(th []ThemeEntry, shades []string, spacing Entries)
 		css.AddLine("\n")
 	}
 
-	//spacing
+	// spacing
 	for _, row := range spacing {
 		for key, value := range row {
 			css.Vars[key] = fmt.Sprintf("var(--spacing-%s)", key)
@@ -199,7 +252,16 @@ func (css *CssFile) buildTheme(th []ThemeEntry, shades []string) {
 			line := fmt.Sprintf(".bg-%s {\n    background-color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 
-			//add color shade classes
+			// add user defined shades
+			if len(entry.UserShades) > 0 {
+				for i, s := range css.UserShades {
+					line := fmt.Sprintf(".bg-%s {\n    background-color: var(--%s);\n}\n\n",
+						s, css.UserShades[i])
+					css.AddLine(line)
+				}
+			}
+
+			// add color shade classes
 			if entry.GenerateShades {
 				for i, s := range shades {
 					line := fmt.Sprintf(".bg-%s-%s {\n    background-color: var(%s);\n}\n\n",
@@ -219,7 +281,15 @@ func (css *CssFile) buildTheme(th []ThemeEntry, shades []string) {
 			line := fmt.Sprintf(".text-%s {\n    color: %s;\n}\n\n", key, css.Vars[key])
 			css.AddLine(line)
 
-			//add color shade classes
+			// add user defined shades
+			if len(entry.UserShades) > 0 {
+				for i, s := range css.UserShades {
+					line := fmt.Sprintf(".text-%s {\n    color: var(--%s);\n}\n\n", s, css.UserShades[i])
+					css.AddLine(line)
+				}
+			}
+
+			// add color shade classes
 			if entry.GenerateShades {
 				for i, s := range shades {
 					line := fmt.Sprintf(".text-%s-%s {\n    color: var(%s);\n}\n\n",
