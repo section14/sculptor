@@ -201,7 +201,7 @@ func (css *CssFile) buildVars(th []ThemeEntry, shades []string, spacing Entries)
 		for key, value := range entry.Color {
 			if len(entry.UserShades) > 0 {
 				names, shades := buildUserShade(key, entry.UserShades)
-				userShades = shades
+				userShades = append(userShades, shades...)
 				css.UserShades = append(css.UserShades, names...)
 			}
 
