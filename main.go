@@ -100,9 +100,9 @@ func (css *CssFile) buildCss(c Config, printBanner bool) {
 
 	padding := Directions{
 		Base:   Class{Name: "p", Val: "padding"},
-		Top:    Class{Name: "ps", Val: "padding-top"},
+		Top:    Class{Name: "pt", Val: "padding-top"},
 		Bottom: Class{Name: "pb", Val: "padding-bottom"},
-		Left:   Class{Name: "pl", Val: "padding-left"},
+		Left:   Class{Name: "ps", Val: "padding-left"},
 		Right:  Class{Name: "pe", Val: "padding-right"},
 	}
 
